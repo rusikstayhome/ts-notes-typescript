@@ -1,39 +1,62 @@
-import React, { useEffect, useState } from 'react';
-import { Note as NoteModel } from './models/note';
-import Note from './components/Note';
-import { Col, Container, Row } from 'react-bootstrap';
+import { useEffect, useState } from 'react';
+import { Container } from 'react-bootstrap';
+import LoginModal from './components/LoginModal';
+import NavBar from './components/NavBar';
+import NotesPageLoggedInView from './components/NotesPageLoggedInView';
+import NotesPageLoggedOutView from './components/NotesPageLoggedOutView';
+import SignUpModal from './components/SignUpModal';
+import { User } from './models/user';
+import * as NotesApi from './network/note_api';
 import styles from './styles/NotesPage.module.css';
 
 function App() {
-  const [notes, setNotes] = useState<NoteModel[]>([]);
+  const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
+
+  const [showSignUpModal, setShowSignUpModal] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   useEffect(() => {
-    async function loadNotes() {
+    async function fetchLoggedInUser() {
       try {
-        const response = await fetch('/api/notes', { method: 'GET' });
-        const notes = await response.json();
-        setNotes(notes);
-        console.log(notes);
+        const user = await NotesApi.getLoggedInUser();
+        setLoggedInUser(user);
       } catch (error) {
         console.error(error);
-        alert(error);
       }
     }
-    loadNotes();
+    fetchLoggedInUser();
   }, []);
 
   return (
-    <Container>
-      <Row xs={1} md={2} xl={3} className="g-4">
-        {notes.map((note) => {
-          return (
-            <Col>
-              <Note note={note} key={note._id} className={styles.note} />
-            </Col>
-          );
-        })}
-      </Row>
-    </Container>
+    <div>
+      <NavBar
+        loggedInUser={loggedInUser}
+        onLoginClicked={() => setShowLoginModal(true)}
+        onSignUpClicked={() => setShowSignUpModal(true)}
+        onLogoutSuccessful={() => setLoggedInUser(null)}
+      />
+      <Container className={styles.notesPage}>
+        <>{loggedInUser ? <NotesPageLoggedInView /> : <NotesPageLoggedOutView />}</>
+        {showSignUpModal && (
+          <SignUpModal
+            onDissmis={() => setShowSignUpModal(false)}
+            onSignUpSuccessful={(user) => {
+              setLoggedInUser(user);
+              setShowSignUpModal(false);
+            }}
+          />
+        )}
+        {showLoginModal && (
+          <LoginModal
+            onDissmis={() => setShowLoginModal(false)}
+            onLoginSuccessful={(user) => {
+              setLoggedInUser(user);
+              setShowLoginModal(false);
+            }}
+          />
+        )}
+      </Container>
+    </div>
   );
 }
 
